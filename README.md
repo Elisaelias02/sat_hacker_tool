@@ -64,8 +64,8 @@ lxml>=4.9.0          # Parser XML/HTML optimizado
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/tu-usuario/satintel.git
-cd satintel
+git clone https://github.com/Elisaelias02/sat_hacker_tool
+cd sat_hacker_tool
 
 # 2. Crear entorno virtual (recomendado)
 python -m venv venv
