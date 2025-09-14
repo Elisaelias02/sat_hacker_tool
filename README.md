@@ -149,8 +149,6 @@ DEFAULT_LONGITUDE=-103.35
 
   * **Calcular Pases Futuros:**
     ```bash
-    # Pases sobre Las Pintitas, Jalisco (ubicación por defecto)
-    python satintel.py --id 25544 --passes
 
     # Pases sobre ubicación específica
     python satintel.py --id 25544 --passes --location "40.7128,-74.0060"  # Nueva York
