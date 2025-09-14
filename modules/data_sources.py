@@ -1,7 +1,7 @@
 import requests
 import logging
 import json
-from typing import Dict, List, Optional  # ← IMPORTACIÓN FALTANTE
+from typing import Dict, List, Optional
 from bs4 import BeautifulSoup
 from config.settings import *
 from modules.utils import infer_satellite_info, extract_norad_from_tle
@@ -17,9 +17,10 @@ class SatelliteDataManager:
             'User-Agent': 'SatIntel/1.0 (Educational Purpose)'
         })
         logger.info("SatelliteDataManager inicializado")
+        self.n2yo_api_key = N2YO_API_KEY # Se corrige para que sea una variable de la clase.
     
-    def get_satellite_data(self, satellite_id: int = None, 
-                          satellite_name: str = None) -> Dict:
+    def get_satellite_data(self, satellite_id: int = None,
+                           satellite_name: str = None) -> Dict:
         """
         Punto de entrada principal para obtener datos satelitales.
         
@@ -77,7 +78,7 @@ class SatelliteDataManager:
         logger.info(f"Datos recuperados de {len(result['sources_used'])} fuentes")
         return result
     
-    def _get_celestrak_data(self, satellite_id: int = None, 
+    def _get_celestrak_data(self, satellite_id: int = None,
                            satellite_name: str = None) -> Optional[Dict]:
         """Recupera datos desde Celestrak."""
         try:
@@ -138,7 +139,7 @@ class SatelliteDataManager:
             return None
         
         try:
-            url = f"{N2YO_BASE_URL}/tle/{satellite_id}&apiKey={N2YO_API_KEY}"
+            url = f"{N2YO_BASE_URL}/tle/{satellite_id}&apiKey={self.n2yo_api_key}"
             
             logger.info(f"Consultando N2YO API: {satellite_id}")
             response = self.session.get(url, timeout=API_TIMEOUTS['n2yo'])
@@ -209,8 +210,8 @@ class SatelliteDataManager:
         """Consolida y limpia los datos obtenidos."""
         # Limpiar valores vacíos
         for section in ['basic_info', 'mission_info', 'technical_info', 'orbital_info']:
-            result[section] = {k: v for k, v in result[section].items() 
-                             if v and v != 'N/A' and v != ''}
+            result[section] = {k: v for k, v in result[section].items()
+                               if v and v != 'N/A' and v != ''}
         
         # Agregar información inferida si falta datos
         if 'celestrak' in result['raw_data']:
@@ -231,221 +232,221 @@ class SatelliteDataManager:
                 result['basic_info']['norad_id'] = celestrak_data.get('norad_id')
     
     def search_satellites(self, search_term: str) -> List[Dict]:
-    """
-    Busca satélites por nombre en múltiples fuentes - VERSIÓN CORREGIDA.
-    
-    Args:
-        search_term: Término de búsqueda
+        """
+        Busca satélites por nombre en múltiples fuentes - VERSIÓN CORREGIDA.
         
-    Returns:
-        Lista de resultados de múltiples fuentes
-    """
-    results = []
-    search_term_clean = search_term.strip().lower()
-    
-    logger.info(f"Buscando '{search_term}' en múltiples fuentes...")
-    
-    # 1. Buscar en SatNOGS (más completo)
-    satnogs_results = self._search_satnogs(search_term_clean)
-    results.extend(satnogs_results)
-    
-    # 2. Buscar en Celestrak por nombre
-    celestrak_results = self._search_celestrak(search_term_clean)
-    results.extend(celestrak_results)
-    
-    # 3. Buscar usando N2YO si tenemos API key
-    if self.n2yo_api_key and self.n2yo_api_key != "25K5EB-9FM8MQ-BLDAGL-5B2J":
-        n2yo_results = self._search_n2yo(search_term_clean)
-        results.extend(n2yo_results)
-    
-    # 4. Eliminar duplicados basado en NORAD ID
-    unique_results = self._remove_duplicate_satellites(results)
-    
-    logger.info(f"Encontrados {len(unique_results)} satélites únicos")
-    return unique_results
+        Args:
+            search_term: Término de búsqueda
+            
+        Returns:
+            Lista de resultados de múltiples fuentes
+        """
+        results = []
+        search_term_clean = search_term.strip().lower()
+        
+        logger.info(f"Buscando '{search_term}' en múltiples fuentes...")
+        
+        # 1. Buscar en SatNOGS (más completo)
+        satnogs_results = self._search_satnogs(search_term_clean)
+        results.extend(satnogs_results)
+        
+        # 2. Buscar en Celestrak por nombre
+        celestrak_results = self._search_celestrak(search_term_clean)
+        results.extend(celestrak_results)
+        
+        # 3. Buscar usando N2YO si tenemos API key
+        if hasattr(self, 'n2yo_api_key') and self.n2yo_api_key and self.n2yo_api_key != "25K5EB-9FM8MQ-BLDAGL-5B2J":
+            n2yo_results = self._search_n2yo(search_term_clean)
+            results.extend(n2yo_results)
+        
+        # 4. Eliminar duplicados basado en NORAD ID
+        unique_results = self._remove_duplicate_satellites(results)
+        
+        logger.info(f"Encontrados {len(unique_results)} satélites únicos")
+        return unique_results
 
-def _search_satnogs(self, search_term: str) -> List[Dict]:
-    """Busca en SatNOGS DB."""
-    results = []
-    try:
-        # Múltiples estrategias de búsqueda en SatNOGS
-        search_urls = [
-            f"{SATNOGS_BASE_URL}/satellites/?name__icontains={search_term}",
-            f"{SATNOGS_BASE_URL}/satellites/?operator__icontains={search_term}",
-        ]
-        
-        for url in search_urls:
-            try:
-                logger.info(f"Consultando SatNOGS: {url}")
-                response = self.session.get(url, timeout=API_TIMEOUTS['satnogs'])
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    for sat in data[:15]:  # Limitar resultados por fuente
-                        if sat.get('norad_cat_id'):  # Solo satélites con NORAD ID válido
-                            results.append({
-                                'source': 'SatNOGS',
-                                'norad_id': sat.get('norad_cat_id'),
-                                'name': sat.get('name', '').strip(),
-                                'operator': sat.get('operator', '').strip(),
-                                'countries': sat.get('countries', '').strip(),
-                                'status': sat.get('status', '').strip(),
-                                'launched': sat.get('launched', ''),
-                                'description': sat.get('description', '').strip()[:100]
-                            })
-                else:
-                    logger.warning(f"SatNOGS respuesta: {response.status_code}")
+    def _search_satnogs(self, search_term: str) -> List[Dict]:
+        """Busca en SatNOGS DB."""
+        results = []
+        try:
+            # Múltiples estrategias de búsqueda en SatNOGS
+            search_urls = [
+                f"{SATNOGS_BASE_URL}/satellites/?name__icontains={search_term}",
+                f"{SATNOGS_BASE_URL}/satellites/?operator__icontains={search_term}",
+            ]
+            
+            for url in search_urls:
+                try:
+                    logger.info(f"Consultando SatNOGS: {url}")
+                    response = self.session.get(url, timeout=API_TIMEOUTS['satnogs'])
                     
-            except requests.RequestException as e:
-                logger.warning(f"Error en consulta SatNOGS: {e}")
-                continue
-                
-    except Exception as e:
-        logger.error(f"Error general en búsqueda SatNOGS: {e}")
-    
-    return results
-
-def _search_celestrak(self, search_term: str) -> List[Dict]:
-    """Busca en Celestrak usando múltiples categorías."""
-    results = []
-    
-    try:
-        # Categorías principales de Celestrak para buscar
-        categories = ['stations', 'visual', 'active', 'weather', 'noaa', 'goes', 'resource']
-        
-        for category in categories:
-            try:
-                url = f"{CELESTRAK_BASE_URL}/NORAD/elements/gp.php?GROUP={category}&FORMAT=tle"
-                logger.info(f"Consultando Celestrak categoría: {category}")
-                
-                response = self.session.get(url, timeout=API_TIMEOUTS['celestrak'])
-                
-                if response.status_code == 200:
-                    tle_data = response.text.strip()
-                    satellites_found = self._parse_tle_search(tle_data, search_term)
-                    results.extend(satellites_found)
-                    
-                    # Si encontramos suficientes resultados, no seguir buscando
-                    if len(results) >= 20:
-                        break
-                        
-            except requests.RequestException as e:
-                logger.warning(f"Error consultando Celestrak {category}: {e}")
-                continue
-                
-    except Exception as e:
-        logger.error(f"Error general en búsqueda Celestrak: {e}")
-    
-    return results[:15]  # Limitar resultados
-
-def _search_n2yo(self, search_term: str) -> List[Dict]:
-    """Busca usando N2YO API si está disponible."""
-    results = []
-    
-    try:
-        # N2YO no tiene búsqueda por nombre directa, 
-        # pero podemos intentar con satélites populares conocidos
-        popular_satellites = {
-            'iss': 25544,
-            'hubble': 20580,
-            'starlink': [44713, 44714, 44715],  # Algunos IDs de Starlink
-            'noaa': [43013, 37849, 28654],      # NOAA satellites
-            'goes': [41866, 36411, 29155],      # GOES satellites
-            'cosmos': [32037, 32038, 32039],    # Algunos Cosmos
-            'gps': [32711, 35752, 38833]        # Algunos GPS
-        }
-        
-        # Buscar coincidencias en términos populares
-        for keyword, sat_ids in popular_satellites.items():
-            if keyword in search_term.lower():
-                if isinstance(sat_ids, list):
-                    ids_to_check = sat_ids
-                else:
-                    ids_to_check = [sat_ids]
-                
-                for sat_id in ids_to_check:
-                    try:
-                        url = f"{N2YO_BASE_URL}/tle/{sat_id}&apiKey={self.n2yo_api_key}"
-                        response = self.session.get(url, timeout=API_TIMEOUTS['n2yo'])
-                        
-                        if response.status_code == 200:
-                            data = response.json()
-                            if 'info' in data:
+                    if response.status_code == 200:
+                        data = response.json()
+                        for sat in data[:15]:  # Limitar resultados por fuente
+                            if sat.get('norad_cat_id'):  # Solo satélites con NORAD ID válido
                                 results.append({
-                                    'source': 'N2YO',
-                                    'norad_id': sat_id,
-                                    'name': data['info'].get('satname', '').strip(),
-                                    'operator': 'N/A',
-                                    'status': 'N/A',
-                                    'launch_date': data['info'].get('launchDate', '')
+                                    'source': 'SatNOGS',
+                                    'norad_id': sat.get('norad_cat_id'),
+                                    'name': sat.get('name', '').strip(),
+                                    'operator': sat.get('operator', '').strip(),
+                                    'countries': sat.get('countries', '').strip(),
+                                    'status': sat.get('status', '').strip(),
+                                    'launched': sat.get('launched', ''),
+                                    'description': sat.get('description', '').strip()[:100]
                                 })
-                                
-                    except Exception as e:
-                        logger.warning(f"Error consultando N2YO ID {sat_id}: {e}")
-                        continue
+                    else:
+                        logger.warning(f"SatNOGS respuesta: {response.status_code}")
                         
-    except Exception as e:
-        logger.error(f"Error en búsqueda N2YO: {e}")
-    
-    return results
-
-def _parse_tle_search(self, tle_data: str, search_term: str) -> List[Dict]:
-    """Parse TLE data y busca coincidencias con el término de búsqueda."""
-    results = []
-    
-    try:
-        lines = tle_data.split('\n')
-        
-        # Procesar TLEs en grupos de 3 líneas
-        for i in range(0, len(lines) - 2, 3):
-            if i + 2 < len(lines):
-                name_line = lines[i].strip()
-                line1 = lines[i + 1].strip()
-                line2 = lines[i + 2].strip()
-                
-                # Verificar si el nombre contiene el término de búsqueda
-                if (search_term in name_line.lower() and 
-                    line1.startswith('1 ') and 
-                    line2.startswith('2 ')):
+                except requests.RequestException as e:
+                    logger.warning(f"Error en consulta SatNOGS: {e}")
+                    continue
                     
-                    try:
-                        # Extraer NORAD ID de la primera línea TLE
-                        norad_id = int(line1[2:7])
-                        
-                        results.append({
-                            'source': 'Celestrak',
-                            'norad_id': norad_id,
-                            'name': name_line.strip(),
-                            'operator': 'N/A',
-                            'status': 'Active',
-                            'classification': line1[7:8],
-                            'tle_available': True
-                        })
-                        
-                    except (ValueError, IndexError) as e:
-                        logger.warning(f"Error procesando TLE: {e}")
-                        continue
-                        
-    except Exception as e:
-        logger.error(f"Error parseando TLE para búsqueda: {e}")
-    
-    return results
+        except Exception as e:
+            logger.error(f"Error general en búsqueda SatNOGS: {e}")
+        
+        return results
 
-def _remove_duplicate_satellites(self, results: List[Dict]) -> List[Dict]:
-    """Elimina satélites duplicados basado en NORAD ID."""
-    seen_ids = set()
-    unique_results = []
-    
-    for satellite in results:
-        norad_id = satellite.get('norad_id')
-        if norad_id and norad_id not in seen_ids:
-            seen_ids.add(norad_id)
-            unique_results.append(satellite)
-    
-    # Ordenar por relevancia (SatNOGS primero, luego por nombre)
-    def sort_key(sat):
-        source_priority = {'SatNOGS': 0, 'Celestrak': 1, 'N2YO': 2}
-        return (source_priority.get(sat.get('source', ''), 3), sat.get('name', '').lower())
-    
-    unique_results.sort(key=sort_key)
-    return unique_results
+    def _search_celestrak(self, search_term: str) -> List[Dict]:
+        """Busca en Celestrak usando múltiples categorías."""
+        results = []
+        
+        try:
+            # Categorías principales de Celestrak para buscar
+            categories = ['stations', 'visual', 'active', 'weather', 'noaa', 'goes', 'resource']
+            
+            for category in categories:
+                try:
+                    url = f"{CELESTRAK_BASE_URL}/NORAD/elements/gp.php?GROUP={category}&FORMAT=tle"
+                    logger.info(f"Consultando Celestrak categoría: {category}")
+                    
+                    response = self.session.get(url, timeout=API_TIMEOUTS['celestrak'])
+                    
+                    if response.status_code == 200:
+                        tle_data = response.text.strip()
+                        satellites_found = self._parse_tle_search(tle_data, search_term)
+                        results.extend(satellites_found)
+                        
+                        # Si encontramos suficientes resultados, no seguir buscando
+                        if len(results) >= 20:
+                            break
+                            
+                except requests.RequestException as e:
+                    logger.warning(f"Error consultando Celestrak {category}: {e}")
+                    continue
+                    
+        except Exception as e:
+            logger.error(f"Error general en búsqueda Celestrak: {e}")
+        
+        return results[:15]  # Limitar resultados
+
+    def _search_n2yo(self, search_term: str) -> List[Dict]:
+        """Busca usando N2YO API si está disponible."""
+        results = []
+        
+        try:
+            # N2YO no tiene búsqueda por nombre directa,
+            # pero podemos intentar con satélites populares conocidos
+            popular_satellites = {
+                'iss': 25544,
+                'hubble': 20580,
+                'starlink': [44713, 44714, 44715],  # Algunos IDs de Starlink
+                'noaa': [43013, 37849, 28654],      # NOAA satellites
+                'goes': [41866, 36411, 29155],      # GOES satellites
+                'cosmos': [32037, 32038, 32039],    # Algunos Cosmos
+                'gps': [32711, 35752, 38833]        # Algunos GPS
+            }
+            
+            # Buscar coincidencias en términos populares
+            for keyword, sat_ids in popular_satellites.items():
+                if keyword in search_term.lower():
+                    if isinstance(sat_ids, list):
+                        ids_to_check = sat_ids
+                    else:
+                        ids_to_check = [sat_ids]
+                    
+                    for sat_id in ids_to_check:
+                        try:
+                            url = f"{N2YO_BASE_URL}/tle/{sat_id}&apiKey={self.n2yo_api_key}"
+                            response = self.session.get(url, timeout=API_TIMEOUTS['n2yo'])
+                            
+                            if response.status_code == 200:
+                                data = response.json()
+                                if 'info' in data:
+                                    results.append({
+                                        'source': 'N2YO',
+                                        'norad_id': sat_id,
+                                        'name': data['info'].get('satname', '').strip(),
+                                        'operator': 'N/A',
+                                        'status': 'N/A',
+                                        'launch_date': data['info'].get('launchDate', '')
+                                    })
+                                    
+                        except Exception as e:
+                            logger.warning(f"Error consultando N2YO ID {sat_id}: {e}")
+                            continue
+                            
+        except Exception as e:
+            logger.error(f"Error en búsqueda N2YO: {e}")
+        
+        return results
+
+    def _parse_tle_search(self, tle_data: str, search_term: str) -> List[Dict]:
+        """Parse TLE data y busca coincidencias con el término de búsqueda."""
+        results = []
+        
+        try:
+            lines = tle_data.split('\n')
+            
+            # Procesar TLEs en grupos de 3 líneas
+            for i in range(0, len(lines) - 2, 3):
+                if i + 2 < len(lines):
+                    name_line = lines[i].strip()
+                    line1 = lines[i + 1].strip()
+                    line2 = lines[i + 2].strip()
+                    
+                    # Verificar si el nombre contiene el término de búsqueda
+                    if (search_term in name_line.lower() and
+                        line1.startswith('1 ') and
+                        line2.startswith('2 ')):
+                        
+                        try:
+                            # Extraer NORAD ID de la primera línea TLE
+                            norad_id = int(line1[2:7])
+                            
+                            results.append({
+                                'source': 'Celestrak',
+                                'norad_id': norad_id,
+                                'name': name_line.strip(),
+                                'operator': 'N/A',
+                                'status': 'Active',
+                                'classification': line1[7:8],
+                                'tle_available': True
+                            })
+                            
+                        except (ValueError, IndexError) as e:
+                            logger.warning(f"Error procesando TLE: {e}")
+                            continue
+                            
+        except Exception as e:
+            logger.error(f"Error parseando TLE para búsqueda: {e}")
+        
+        return results
+
+    def _remove_duplicate_satellites(self, results: List[Dict]) -> List[Dict]:
+        """Elimina satélites duplicados basado en NORAD ID."""
+        seen_ids = set()
+        unique_results = []
+        
+        for satellite in results:
+            norad_id = satellite.get('norad_id')
+            if norad_id and norad_id not in seen_ids:
+                seen_ids.add(norad_id)
+                unique_results.append(satellite)
+        
+        # Ordenar por relevancia (SatNOGS primero, luego por nombre)
+        def sort_key(sat):
+            source_priority = {'SatNOGS': 0, 'Celestrak': 1, 'N2YO': 2}
+            return (source_priority.get(sat.get('source', ''), 3), sat.get('name', '').lower())
+        
+        unique_results.sort(key=sort_key)
+        return unique_results
