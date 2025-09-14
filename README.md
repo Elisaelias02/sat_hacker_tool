@@ -8,7 +8,7 @@ Sat Hacker Tool es una herramienta profesional de **línea de comandos** desarro
 
   * **📡 Recuperación de Datos Multi-Fuente:**
 
-      * **Celestrak:** TLEs oficiales de NORAD/NASA (siempre funciona)
+      * **Celestrak:** TLEs oficiales de NORAD/NASA
       * **N2YO API:** Seguimiento satelital en tiempo real
       * **SatNOGS DB:** Base de datos colaborativa de radioaficionados
       * **Web Scraping:** Información detallada de fuentes públicas
@@ -27,7 +27,7 @@ Sat Hacker Tool es una herramienta profesional de **línea de comandos** desarro
       * Identificación de tácticas y técnicas potenciales
       * Generación de recomendaciones de seguridad
 
-  * **💻 Interfaz CLI Profesional:**
+  * **💻 Interfaz CLI:**
 
       * Comandos intuitivos con validación completa
       * Múltiples formatos de salida (tabla, JSON, detallado)
@@ -504,6 +504,6 @@ Este proyecto está bajo la **Licencia MIT**. Ver [LICENSE](https://www.google.c
 
 **⚠️ Disclaimer:** Esta herramienta está destinada únicamente para fines educativos, de investigación y análisis de seguridad legítimos. El uso indebido de esta herramienta es responsabilidad del usuario. Los autores no se hacen responsables del mal uso de la información obtenida.
 
-**🌟 Agradecimientos:** Agradecemos a todas las organizaciones que proporcionan datos satelitales abiertos: NORAD, NASA, Celestrak, N2YO, SatNOGS y la comunidad de radioaficionados worldwide.
+**🌟 Agradecimientos:** Agradezco a todas las organizaciones que proporcionan datos satelitales abiertos y a mi gatita Sky que me acompaño en el desarrollo de este proyecto.
 
-**Sat HACKER Toll v2.0** - Desarrollado por Cinn4mor0ll (Elisa Elias) para la comunidad de inteligencia espacial.
+**Sat HACKER Toll v1.0** - Desarrollado por Cinn4mor0ll (Elisa Elias) para la comunidad de inteligencia espacial.
