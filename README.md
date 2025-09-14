@@ -1,6 +1,6 @@
 # SAT HACKER TOOL - Herramienta de Inteligencia Satelital
 
-Sat Hacker Tool es una herramienta profesional de **línea de comandos** desarrollada en **Python** para la recopilación, análisis y evaluación de datos satelitales con enfoque en inteligencia de seguridad basada en el framework **SPARTA**.
+Sat Hacker Tool es una herramienta  de **línea de comandos** desarrollada en **Python** para la recopilación, análisis y evaluación de datos satelitales con enfoque en inteligencia de seguridad basada en el framework **SPARTA**.
 
 -----
 
