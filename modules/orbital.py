@@ -41,10 +41,11 @@ class OrbitalCalculator:
         Returns:
             Diccionario con lat, lon, alt, velocidad, y otros parámetros
         """
+        # ... (código que se te proporcionó) ...
         try:
             # Convertir datetime a Julian Day
             jd, fr = jday(dt.year, dt.month, dt.day, 
-                         dt.hour, dt.minute, dt.second + dt.microsecond/1e6)
+                          dt.hour, dt.minute, dt.second + dt.microsecond/1e6)
             
             # Calcular posición y velocidad
             error, position, velocity = self.satellite.sgp4(jd, fr)
@@ -74,7 +75,7 @@ class OrbitalCalculator:
             logger.error(f"Error al calcular posición: {e}")
             return None
     
-    def _eci_to_geodetic(self, position_eci: Tuple[float, float, float], 
+     def _eci_to_geodetic(self, position_eci: Tuple[float, float, float], 
                         dt: datetime) -> Tuple[float, float, float]:
         """
         Convierte coordenadas ECI a geodésicas (lat/lon/alt).
@@ -120,8 +121,8 @@ class OrbitalCalculator:
         return lat, lon_adjusted, alt
     
     def calculate_passes(self, observer_lat: float, observer_lon: float, 
-                        observer_alt: float = 0.0, hours_ahead: int = 24,
-                        min_elevation: float = MIN_ELEVATION_DEGREES) -> List[Dict]:
+                         observer_alt: float = 0.0, hours_ahead: int = 24,
+                         min_elevation: float = MIN_ELEVATION_DEGREES) -> List[Dict]:
         """
         Calcula pases futuros del satélite sobre una ubicación.
         
@@ -135,6 +136,7 @@ class OrbitalCalculator:
         Returns:
             Lista de diccionarios con información de pases
         """
+        # ... (código que se te proporcionó) ...
         passes = []
         start_time = datetime.utcnow()
         end_time = start_time + timedelta(hours=hours_ahead)
@@ -216,7 +218,7 @@ class OrbitalCalculator:
             return []
     
     def _calculate_look_angles(self, obs_lat: float, obs_lon: float, obs_alt: float,
-                              sat_lat: float, sat_lon: float, sat_alt: float) -> Tuple[float, float, float]:
+                               sat_lat: float, sat_lon: float, sat_alt: float) -> Tuple[float, float, float]:
         """
         Calcula ángulos de elevación, azimut y distancia desde observador a satélite.
         
@@ -227,6 +229,7 @@ class OrbitalCalculator:
         Returns:
             Tupla con (elevación, azimut, distancia) en grados, grados, km
         """
+        # ... (código que se te proporcionó) ...
         # Convertir a radianes
         obs_lat_rad = math.radians(obs_lat)
         obs_lon_rad = math.radians(obs_lon)
@@ -278,6 +281,7 @@ class OrbitalCalculator:
         Returns:
             Diccionario con elementos orbitales
         """
+        # ... (código que se te proporcionó) ...
         try:
             return {
                 'satellite_number': self.satellite.satnum,
