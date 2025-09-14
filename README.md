@@ -508,4 +508,4 @@ Este proyecto está bajo la **Licencia MIT**. Ver [LICENSE](https://www.google.c
 
 **🌟 Agradecimientos:** Agradecemos a todas las organizaciones que proporcionan datos satelitales abiertos: NORAD, NASA, Celestrak, N2YO, SatNOGS y la comunidad de radioaficionados worldwide.
 
-**SatIntel v2.0** - Desarrollado con ❤️ para la comunidad de inteligencia espacial.
+**Sat HACKER Toll v2.0** - Desarrollado por Cinn4mor0ll (Elisa Elias) para la comunidad de inteligencia espacial.
