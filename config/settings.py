@@ -1,7 +1,14 @@
 import os
 from dotenv import load_dotenv
 
+# Cargar variables de entorno con debugging
 load_dotenv()
+
+# Debugging: verificar si las variables se cargaron
+print(f"DEBUG: SPACETRACK_USERNAME loaded: {bool(os.getenv('SPACETRACK_USERNAME'))}")
+print(f"DEBUG: SPACETRACK_PASSWORD loaded: {bool(os.getenv('SPACETRACK_PASSWORD'))}")
+if os.getenv('SPACETRACK_USERNAME'):
+    print(f"DEBUG: Username: {os.getenv('SPACETRACK_USERNAME')[:5]}...")  # Solo primeros 5 caracteres
 
 # URLs de APIs y fuentes de datos
 CELESTRAK_BASE_URL = "https://celestrak.org"
