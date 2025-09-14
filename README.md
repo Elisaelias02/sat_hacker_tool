@@ -502,7 +502,7 @@ Este proyecto está bajo la **Licencia MIT**. Ver [LICENSE](https://www.google.c
 
 -----
 
-**⚠️ Disclaimer:** Esta herramienta está destinada únicamente para fines educativos, de investigación y análisis de seguridad legítimos. El uso indebido de esta herramienta es responsabilidad del usuario. Los autores no se hacen responsables del mal uso de la información obtenida.
+**⚠️ Disclaimer:** Esta herramienta está destinada únicamente para fines educativos, de investigación y análisis de seguridad legítimos. El uso indebido de esta herramienta es responsabilidad del usuario. La autora no se hace responsable del mal uso de la información obtenida.
 
 **🌟 Agradecimientos:** Agradezco a todas las organizaciones que proporcionan datos satelitales abiertos y a mi gatita Sky que me acompaño en el desarrollo de este proyecto.
 
