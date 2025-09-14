@@ -415,7 +415,7 @@ python satintel.py --search "test"
 
 ## 🔒 Framework SPARTA
 
-SatIntel implementa una versión adaptada del framework **SPARTA** para análisis de seguridad espacial, clasificando satélites por:
+Sat Hacker Tool implementa una versión adaptada del framework **SPARTA** para análisis de seguridad espacial, clasificando satélites por:
 
   * **Tácticas Identificadas:** Reconocimiento, Comando y Control, Recolección, Impacto y Persistencia.
   * **Evaluación de Riesgos:** Alto (RU, CN, KP, IR), Medio (Países no alineados), Bajo (US, CA, GB, FR, DE, JP, AU).
