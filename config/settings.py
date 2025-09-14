@@ -1,43 +1,33 @@
 import os
 from dotenv import load_dotenv
 
-# Cargar variables de entorno con debugging
 load_dotenv()
 
-# Debugging: verificar si las variables se cargaron
-print(f"DEBUG: SPACETRACK_USERNAME loaded: {bool(os.getenv('SPACETRACK_USERNAME'))}")
-print(f"DEBUG: SPACETRACK_PASSWORD loaded: {bool(os.getenv('SPACETRACK_PASSWORD'))}")
-if os.getenv('SPACETRACK_USERNAME'):
-    print(f"DEBUG: Username: {os.getenv('SPACETRACK_USERNAME')[:5]}...")  # Solo primeros 5 caracteres
-
-# URLs de APIs y fuentes de datos
+# URLs base de APIs
 CELESTRAK_BASE_URL = "https://celestrak.org"
 SPACETRACK_BASE_URL = "https://www.space-track.org"
+N2YO_BASE_URL = "https://api.n2yo.com/rest/v1/satellite"
+SATNOGS_BASE_URL = "https://db.satnogs.org/api"
 
-# URLs específicas de TLE
-CELESTRAK_TLE_URLS = {
-    "all": f"{CELESTRAK_BASE_URL}/NORAD/elements/gp.php?GROUP=active&FORMAT=tle",
-    "stations": f"{CELESTRAK_BASE_URL}/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle",
-    "visual": f"{CELESTRAK_BASE_URL}/NORAD/elements/gp.php?GROUP=visual&FORMAT=tle",
-    "weather": f"{CELESTRAK_BASE_URL}/NORAD/elements/gp.php?GROUP=weather&FORMAT=tle",
-    "noaa": f"{CELESTRAK_BASE_URL}/NORAD/elements/gp.php?GROUP=noaa&FORMAT=tle",
-    "goes": f"{CELESTRAK_BASE_URL}/NORAD/elements/gp.php?GROUP=goes&FORMAT=tle",
-    "resource": f"{CELESTRAK_BASE_URL}/NORAD/elements/gp.php?GROUP=resource&FORMAT=tle",
-    "cubesat": f"{CELESTRAK_BASE_URL}/NORAD/elements/gp.php?GROUP=cubesat&FORMAT=tle",
-    "other": f"{CELESTRAK_BASE_URL}/NORAD/elements/gp.php?GROUP=other&FORMAT=tle"
-}
-
-# Credenciales Space-Track
+# Credenciales
 SPACETRACK_USERNAME = os.getenv("SPACETRACK_USERNAME")
 SPACETRACK_PASSWORD = os.getenv("SPACETRACK_PASSWORD")
+N2YO_API_KEY = os.getenv("N2YO_API_KEY", "25K5EB-9FM8MQ-BLDAGL-5B2J")  # Clave demo
 
-# Configuración de logging
+# Configuración general
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-
-# Ubicación por defecto (Las Pintitas, Jalisco, MX)
 DEFAULT_LATITUDE = float(os.getenv("DEFAULT_LATITUDE", "20.67"))
 DEFAULT_LONGITUDE = float(os.getenv("DEFAULT_LONGITUDE", "-103.35"))
 
-# Configuración orbital
+# Constantes físicas
 EARTH_RADIUS_KM = 6371.0
-MIN_ELEVATION_DEGREES = 10.0  # Elevación mínima para considerar un pase visible
+MIN_ELEVATION_DEGREES = 10.0
+
+# Timeouts y límites
+API_TIMEOUTS = {
+    'celestrak': 10,
+    'n2yo': 15,
+    'satnogs': 10,
+    'spacetrack': 15,
+    'scraping': 20
+}
