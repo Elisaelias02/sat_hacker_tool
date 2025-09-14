@@ -19,7 +19,6 @@ class SatIntelCLI:
     """Interfaz de línea de comandos principal."""
     
     def __init__(self):
-        """Inicializa la interfaz CLI."""
         self.data_retriever = SatelliteDataRetriever()
         self.sparta_analyzer = SPARTAAnalyzer()
         
@@ -123,6 +122,8 @@ Ejemplos de uso:
     
     def print_satellite_basic_info(self, satellite_data: dict, output_format: str):
         """Imprime información básica del satélite."""
+        # Lógica para imprimir información básica, TLE, etc.
+        # ... (código que se te proporcionó) ...
         spacetrack_info = satellite_data.get('spacetrack_info', {})
         tle = satellite_data.get('tle')
         
@@ -178,6 +179,7 @@ Ejemplos de uso:
     
     def print_current_position(self, satellite_data: dict):
         """Imprime posición actual del satélite."""
+        # ... (código que se te proporcionó) ...
         tle = satellite_data.get('tle')
         if not tle:
             print(f"{Fore.RED}No hay datos TLE disponibles para calcular posición{Style.RESET_ALL}")
@@ -204,6 +206,7 @@ Ejemplos de uso:
     def print_passes(self, satellite_data: dict, observer_lat: float, 
                     observer_lon: float, hours: int, min_elevation: float):
         """Imprime información de pases futuros."""
+        # ... (código que se te proporcionó) ...
         tle = satellite_data.get('tle')
         if not tle:
             print(f"{Fore.RED}No hay datos TLE disponibles para calcular pases{Style.RESET_ALL}")
@@ -250,6 +253,7 @@ Ejemplos de uso:
     
     def print_security_analysis(self, satellite_data: dict):
         """Imprime análisis de seguridad SPARTA."""
+        # ... (código que se te proporcionó) ...
         try:
             analysis = self.sparta_analyzer.analyze_satellite(satellite_data)
             report = self.sparta_analyzer.generate_sparta_report(analysis)
@@ -260,6 +264,7 @@ Ejemplos de uso:
     
     def print_search_results(self, search_results: list, search_term: str):
         """Imprime resultados de búsqueda."""
+        # ... (código que se te proporcionó) ...
         self.print_header(f"RESULTADOS DE BÚSQUEDA: '{search_term}'")
         
         if not search_results:
@@ -286,6 +291,7 @@ Ejemplos de uso:
     
     def run(self, args):
         """Ejecuta la aplicación principal."""
+        # ... (código que se te proporcionó) ...
         try:
             # Configurar logging
             if args.verbose:
