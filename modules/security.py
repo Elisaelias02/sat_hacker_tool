@@ -60,6 +60,7 @@ class SPARTAAnalyzer:
         Returns:
             Diccionario con análisis de seguridad
         """
+        # ... (código que se te proporcionó) ...
         analysis = {
             'satellite_id': None,
             'satellite_name': None,
@@ -114,6 +115,7 @@ class SPARTAAnalyzer:
     
     def _determine_satellite_category(self, spacetrack_info: Dict) -> str:
         """Determina la categoría del satélite basado en su información."""
+        # ... (código que se te proporcionó) ...
         object_name = spacetrack_info.get('OBJECT_NAME', '').upper()
         object_type = spacetrack_info.get('OBJECT_TYPE', '').upper()
         
@@ -139,6 +141,7 @@ class SPARTAAnalyzer:
     
     def _assess_country_risk(self, country_code: str) -> str:
         """Evalúa el nivel de riesgo basado en el país de origen."""
+        # ... (código que se te proporcionó) ...
         if not country_code:
             return 'unknown'
         
@@ -153,6 +156,7 @@ class SPARTAAnalyzer:
     
     def _map_sparta_tactics(self, category: str, country: str) -> List[str]:
         """Mapea tácticas SPARTA basadas en categoría y país."""
+        # ... (código que se te proporcionó) ...
         tactics = []
         
         # Tácticas basadas en categoría del satélite
@@ -179,8 +183,9 @@ class SPARTAAnalyzer:
         return list(set(tactics))  # Eliminar duplicados
     
     def _generate_security_concerns(self, category: str, risk_level: str, 
-                                  spacetrack_info: Dict) -> List[str]:
+                                   spacetrack_info: Dict) -> List[str]:
         """Genera lista de preocupaciones de seguridad."""
+        # ... (código que se te proporcionó) ...
         concerns = []
         
         # Preocupaciones basadas en categoría
@@ -231,6 +236,7 @@ class SPARTAAnalyzer:
     
     def _generate_recommendations(self, analysis: Dict) -> List[str]:
         """Genera recomendaciones de seguridad."""
+        # ... (código que se te proporcionó) ...
         recommendations = []
         
         risk_level = analysis['risk_level']
@@ -268,6 +274,7 @@ class SPARTAAnalyzer:
     
     def _calculate_confidence_score(self, satellite_data: Dict) -> float:
         """Calcula puntuación de confianza del análisis."""
+        # ... (código que se te proporcionó) ...
         score = 0.0
         max_score = 5.0
         
@@ -290,6 +297,7 @@ class SPARTAAnalyzer:
     
     def generate_sparta_report(self, analysis: Dict) -> str:
         """Genera reporte SPARTA en formato de texto."""
+        # ... (código que se te proporcionó) ...
         report_lines = []
         
         report_lines.append("=" * 60)
