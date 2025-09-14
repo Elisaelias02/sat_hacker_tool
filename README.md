@@ -506,4 +506,4 @@ Este proyecto está bajo la **Licencia MIT**. Ver [LICENSE](https://www.google.c
 
 **🌟 Agradecimientos:** Agradezco a todas las organizaciones que proporcionan datos satelitales abiertos y a mi gatita Sky que me acompaño en el desarrollo de este proyecto.
 
-**Sat HACKER Toll v1.0** - Desarrollado por Cinn4mor0ll (Elisa Elias) para la comunidad de inteligencia espacial.
+**Sat HACKER Tool v1.0** - Desarrollado por Cinn4mor0ll (Elisa Elias) para la comunidad de inteligencia espacial.
