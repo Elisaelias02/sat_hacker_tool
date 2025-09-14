@@ -1,345 +1,309 @@
 import argparse
 import logging
 import sys
-from typing import Optional
+from typing import Dict, List, Tuple  # ← IMPORTACIÓN FALTANTE
 from datetime import datetime
 from tabulate import tabulate
 from colorama import init, Fore, Style
-from modules.sat_data import SatelliteDataRetriever, parse_tle
+
+from modules.data_sources import SatelliteDataManager
 from modules.orbital import OrbitalCalculator
-from modules.security import SPARTAAnalyzer
+from modules.security import SecurityAnalyzer
+from modules.utils import parse_tle
 from config.settings import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 
-# Inicializar colorama para colores en terminal
 init(autoreset=True)
-
 logger = logging.getLogger(__name__)
 
 class SatIntelCLI:
-    """Interfaz de línea de comandos principal."""
+    """Interfaz CLI principal - versión corregida."""
     
     def __init__(self):
-        self.data_retriever = SatelliteDataRetriever()
-        self.sparta_analyzer = SPARTAAnalyzer()
-        
+        self.data_manager = SatelliteDataManager()
+        self.security_analyzer = SecurityAnalyzer()
+    
     def create_parser(self) -> argparse.ArgumentParser:
-        """Crea el parser de argumentos de línea de comandos."""
+        """Crea parser de argumentos."""
         parser = argparse.ArgumentParser(
             description="SatIntel - Herramienta de Inteligencia Satelital",
-            formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog="""
-Ejemplos de uso:
+Ejemplos:
   python satintel.py --id 25544
   python satintel.py --name "ISS"
-  python satintel.py --id 25544 --location "20.67,-103.35"
   python satintel.py --id 25544 --passes --location "20.67,-103.35"
   python satintel.py --search "starlink"
             """
         )
         
-        # Grupo de identificación del satélite
+        # Identificación del satélite
         id_group = parser.add_mutually_exclusive_group(required=True)
-        id_group.add_argument(
-            '--id', 
-            type=int,
-            help='NORAD ID del satélite'
-        )
-        id_group.add_argument(
-            '--name', 
-            type=str,
-            help='Nombre del satélite'
-        )
-        id_group.add_argument(
-            '--search',
-            type=str,
-            help='Buscar satélites por nombre (muestra lista de resultados)'
-        )
-        
-        # Opciones de ubicación
-        parser.add_argument(
-            '--location',
-            type=str,
-            default=f"{DEFAULT_LATITUDE},{DEFAULT_LONGITUDE}",
-            help='Ubicación del observador en formato "lat,lon" (default: Las Pintitas, Jalisco)'
-        )
+        id_group.add_argument('--id', type=int, help='NORAD ID del satélite')
+        id_group.add_argument('--name', type=str, help='Nombre del satélite')
+        id_group.add_argument('--search', type=str, help='Buscar satélites por nombre')
         
         # Opciones de análisis
-        parser.add_argument(
-            '--passes',
-            action='store_true',
-            help='Calcular pases futuros sobre la ubicación especificada'
-        )
-        
-        parser.add_argument(
-            '--hours',
-            type=int,
-            default=24,
-            help='Horas hacia adelante para calcular pases (default: 24)'
-        )
-        
-        parser.add_argument(
-            '--min-elevation',
-            type=float,
-            default=10.0,
-            help='Elevación mínima en grados para considerar un pase visible (default: 10.0)'
-        )
+        parser.add_argument('--location', type=str, 
+                          default=f"{DEFAULT_LATITUDE},{DEFAULT_LONGITUDE}",
+                          help='Ubicación observador "lat,lon"')
+        parser.add_argument('--passes', action='store_true', 
+                          help='Calcular pases futuros')
+        parser.add_argument('--hours', type=int, default=24,
+                          help='Horas para calcular pases')
         
         # Opciones de salida
-        parser.add_argument(
-            '--output',
-            choices=['table', 'json', 'detailed'],
-            default='detailed',
-            help='Formato de salida (default: detailed)'
-        )
-        
-        parser.add_argument(
-            '--no-security',
-            action='store_true',
-            help='Omitir análisis de seguridad SPARTA'
-        )
-        
-        parser.add_argument(
-            '--verbose', '-v',
-            action='store_true',
-            help='Salida detallada (logging)'
-        )
+        parser.add_argument('--output', choices=['table', 'json', 'detailed'],
+                          default='detailed', help='Formato de salida')
+        parser.add_argument('--no-security', action='store_true',
+                          help='Omitir análisis SPARTA')
+        parser.add_argument('--verbose', '-v', action='store_true',
+                          help='Salida detallada')
         
         return parser
     
-    def parse_location(self, location_str: str) -> tuple:
-        """Parsea string de ubicación en formato 'lat,lon'."""
+    def run(self, args):
+        """Ejecuta la aplicación principal."""
         try:
-            lat, lon = map(float, location_str.split(','))
-            return lat, lon
-        except (ValueError, IndexError):
-            raise ValueError(f"Formato de ubicación inválido: {location_str}. Use 'lat,lon'")
+            if args.verbose:
+                logging.basicConfig(level=logging.INFO)
+            
+            # Caso búsqueda
+            if args.search:
+                self._handle_search(args.search)
+                return
+            
+            # Obtener datos del satélite
+            print(f"{Fore.CYAN} Recuperando datos satelitales...{Style.RESET_ALL}")
+            
+            satellite_data = self.data_manager.get_satellite_data(
+                satellite_id=args.id,
+                satellite_name=args.name
+            )
+            
+            if not satellite_data.get('sources_used'):
+                print(f"{Fore.RED} No se encontraron datos para el satélite{Style.RESET_ALL}")
+                return
+            
+            # Mostrar información
+            self._display_satellite_info(satellite_data, args.output)
+            
+            # Mostrar posición actual
+            if satellite_data.get('tle'):
+                self._display_current_position(satellite_data)
+            
+            # Calcular pases si se solicita
+            if args.passes and satellite_data.get('tle'):
+                observer_lat, observer_lon = self._parse_location(args.location)
+                self._display_passes(satellite_data, observer_lat, observer_lon, args.hours)
+            
+            # Análisis de seguridad
+            if not args.no_security:
+                self._display_security_analysis(satellite_data)
+            
+            # Resumen final
+            sources_count = len(satellite_data.get('sources_used', []))
+            print(f"\n{Fore.GREEN} Consulta completada usando {sources_count} fuentes{Style.RESET_ALL}")
+            
+        except KeyboardInterrupt:
+            print(f"\n{Fore.YELLOW} Operación cancelada{Style.RESET_ALL}")
+        except Exception as e:
+            print(f"{Fore.RED} Error: {e}{Style.RESET_ALL}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
     
-    def print_header(self, title: str):
-        """Imprime encabezado con formato."""
-        print(f"\n{Fore.CYAN}{Style.BRIGHT}{'=' * 60}")
-        print(f"{title:^60}")
-        print(f"{'=' * 60}{Style.RESET_ALL}\n")
-    
-    def print_satellite_basic_info(self, satellite_data: dict, output_format: str):
-        """Imprime información básica del satélite."""
-        # Lógica para imprimir información básica, TLE, etc.
-        # ... (código que se te proporcionó) ...
-        spacetrack_info = satellite_data.get('spacetrack_info', {})
-        tle = satellite_data.get('tle')
+    def _handle_search(self, search_term: str):
+        """Maneja búsqueda de satélites."""
+        print(f"{Fore.CYAN}🔍 Buscando: '{search_term}'...{Style.RESET_ALL}")
         
+        results = self.data_manager.search_satellites(search_term)
+        
+        if not results:
+            print(f"{Fore.YELLOW}No se encontraron resultados{Style.RESET_ALL}")
+            return
+        
+        print(f"\n{Fore.GREEN} Resultados encontrados: {len(results)}{Style.RESET_ALL}\n")
+        
+        table_data = []
+        for sat in results[:20]:  # Primeros 20
+            table_data.append([
+                sat.get('norad_id', 'N/A'),
+                sat.get('name', 'N/A')[:50],
+                sat.get('operator', 'N/A')[:25],
+                sat.get('status', 'N/A')
+            ])
+        
+        print(tabulate(
+            table_data,
+            headers=["NORAD ID", "Nombre", "Operador", "Estado"],
+            tablefmt="grid"
+        ))
+    
+    def _display_satellite_info(self, satellite_data: Dict, output_format: str):
+        """Muestra información del satélite - MÉTODO CORREGIDO."""
         if output_format == 'json':
             import json
             print(json.dumps(satellite_data, indent=2, default=str))
             return
         
-        self.print_header("INFORMACIÓN BÁSICA DEL SATÉLITE")
+        basic_info = satellite_data.get('basic_info', {})
+        mission_info = satellite_data.get('mission_info', {})
+        technical_info = satellite_data.get('technical_info', {})
+        orbital_info = satellite_data.get('orbital_info', {})
+        sources = ', '.join(satellite_data.get('sources_used', []))
         
-        if spacetrack_info:
-            info_data = [
-                ["NORAD ID", spacetrack_info.get('NORAD_CAT_ID', 'N/A')],
-                ["Nombre", spacetrack_info.get('OBJECT_NAME', 'N/A')],
-                ["País", spacetrack_info.get('COUNTRY', 'N/A')],
-                ["Fecha Lanzamiento", spacetrack_info.get('LAUNCH_DATE', 'N/A')],
-                ["Sitio Lanzamiento", spacetrack_info.get('LAUNCH_SITE', 'N/A')],
-                ["Tipo de Objeto", spacetrack_info.get('OBJECT_TYPE', 'N/A')],
-                ["Estado", spacetrack_info.get('OPS_STATUS_CODE', 'N/A')],
-                ["Período Orbital (min)", spacetrack_info.get('PERIOD', 'N/A')]
+        # Información básica
+        self._print_header("INFORMACIÓN BÁSICA DEL SATÉLITE")
+        print(f"{Fore.CYAN}Fuentes: {sources}{Style.RESET_ALL}\n")
+        
+        basic_data = [
+            ["NORAD ID", basic_info.get('norad_id', 'N/A')],
+            ["Nombre", basic_info.get('name', 'N/A')],
+            ["Operador", basic_info.get('operator', 'N/A')],
+            ["País", basic_info.get('countries', basic_info.get('inferred_country', 'N/A'))],
+            ["Estado", basic_info.get('status', 'N/A')],
+            ["Lanzamiento", basic_info.get('launched', basic_info.get('launch_date', 'N/A'))],
+            ["Sitio Web", basic_info.get('website', 'N/A')]
+        ]
+        
+        self._print_table(basic_data, output_format)
+        
+        # Información de misión
+        if mission_info:
+            self._print_header("INFORMACIÓN DE MISIÓN")
+            
+            mission_data = []
+            if mission_info.get('description'):
+                mission_data.append(["Descripción", mission_info['description'][:100] + "..."])
+            if mission_info.get('type'):
+                mission_data.append(["Tipo", mission_info['type']])
+            if mission_info.get('orbit'):
+                mission_data.append(["Órbita", mission_info['orbit']])
+            if mission_info.get('inferred_purpose'):
+                mission_data.append(["Propósito", mission_info['inferred_purpose']])
+            
+            if mission_data:
+                self._print_table(mission_data, output_format)
+        
+        # Información técnica
+        if technical_info:
+            self._print_header("ESPECIFICACIONES TÉCNICAS")
+            
+            tech_data = []
+            for key, value in technical_info.items():
+                if value:
+                    display_key = key.replace('_', ' ').title()
+                    if isinstance(value, list):
+                        value = ', '.join(str(v) for v in value)
+                    tech_data.append([display_key, str(value)])
+            
+            if tech_data:
+                self._print_table(tech_data, output_format)
+        
+        # Elementos orbitales
+        if orbital_info:
+            self._print_header("ELEMENTOS ORBITALES")
+            
+            orbital_data = [
+                ["Inclinación", f"{orbital_info.get('inclination', 0):.2f}°"],
+                ["Excentricidad", f"{orbital_info.get('eccentricity', 0):.6f}"],
+                ["Movimiento Medio", f"{orbital_info.get('mean_motion', 0):.6f} rev/día"],
+                ["RAAN", f"{orbital_info.get('raan', 0):.2f}°"],
+                ["Arg. Perigeo", f"{orbital_info.get('arg_perigee', 0):.2f}°"]
             ]
             
-            if output_format == 'table':
-                print(tabulate(info_data, headers=["Parámetro", "Valor"], tablefmt="grid"))
-            else:
-                for param, value in info_data:
-                    print(f"{Fore.YELLOW}{param:.<20}{Style.RESET_ALL} {value}")
-        
-        if tle:
-            self.print_header("ELEMENTOS ORBITALES (TLE)")
-            try:
-                name, line1, line2 = parse_tle(tle)
-                orbital_calc = OrbitalCalculator(line1, line2)
-                elements = orbital_calc.get_orbital_elements()
-                
-                orbital_data = [
-                    ["Inclinación", f"{elements.get('inclination_deg', 'N/A'):.2f}°"],
-                    ["Excentricidad", f"{elements.get('eccentricity', 'N/A'):.6f}"],
-                    ["Argumento Perigeo", f"{elements.get('argument_of_perigee_deg', 'N/A'):.2f}°"],
-                    ["RAAN", f"{elements.get('raan_deg', 'N/A'):.2f}°"],
-                    ["Movimiento Medio", f"{elements.get('mean_motion_rev_per_day', 'N/A'):.6f} rev/día"],
-                    ["Coeficiente BSTAR", f"{elements.get('bstar_drag', 'N/A'):.2e}"]
-                ]
-                
-                if output_format == 'table':
-                    print(tabulate(orbital_data, headers=["Elemento", "Valor"], tablefmt="grid"))
-                else:
-                    for element, value in orbital_data:
-                        print(f"{Fore.GREEN}{element:.<20}{Style.RESET_ALL} {value}")
-                
-            except Exception as e:
-                print(f"{Fore.RED}Error al procesar TLE: {e}{Style.RESET_ALL}")
+            self._print_table(orbital_data, output_format)
     
-    def print_current_position(self, satellite_data: dict):
-        """Imprime posición actual del satélite."""
-        # ... (código que se te proporcionó) ...
-        tle = satellite_data.get('tle')
-        if not tle:
-            print(f"{Fore.RED}No hay datos TLE disponibles para calcular posición{Style.RESET_ALL}")
-            return
-        
+    def _display_current_position(self, satellite_data: Dict):
+        """Muestra posición actual del satélite."""
         try:
-            name, line1, line2 = parse_tle(tle)
-            orbital_calc = OrbitalCalculator(line1, line2)
+            tle = satellite_data.get('tle')
+            if not tle:
+                return
             
-            current_time = datetime.utcnow()
-            position = orbital_calc.get_position_at_time(current_time)
+            name, line1, line2 = parse_tle(tle)
+            calc = OrbitalCalculator(line1, line2)
+            position = calc.get_current_position()
             
             if position:
-                self.print_header("POSICIÓN ACTUAL")
-                print(f"{Fore.YELLOW}Tiempo UTC:{Style.RESET_ALL} {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
-                print(f"{Fore.YELLOW}Latitud:{Style.RESET_ALL} {position['latitude']:.4f}°")
-                print(f"{Fore.YELLOW}Longitud:{Style.RESET_ALL} {position['longitude']:.4f}°")
-                print(f"{Fore.YELLOW}Altitud:{Style.RESET_ALL} {position['altitude_km']:.2f} km")
-                print(f"{Fore.YELLOW}Velocidad:{Style.RESET_ALL} {position['velocity_km_s']:.2f} km/s")
-            
+                self._print_header("POSICIÓN ACTUAL")
+                current_time = datetime.utcnow()
+                
+                position_data = [
+                    ["Tiempo UTC", current_time.strftime('%Y-%m-%d %H:%M:%S')],
+                    ["Latitud", f"{position['latitude']:.4f}°"],
+                    ["Longitud", f"{position['longitude']:.4f}°"],
+                    ["Altitud", f"{position['altitude_km']:.2f} km"],
+                    ["Velocidad", f"{position['velocity_km_s']:.2f} km/s"]
+                ]
+                
+                self._print_table(position_data, 'detailed')
+                
         except Exception as e:
-            print(f"{Fore.RED}Error al calcular posición: {e}{Style.RESET_ALL}")
+            print(f"{Fore.RED}Error calculando posición: {e}{Style.RESET_ALL}")
     
-    def print_passes(self, satellite_data: dict, observer_lat: float, 
-                    observer_lon: float, hours: int, min_elevation: float):
-        """Imprime información de pases futuros."""
-        # ... (código que se te proporcionó) ...
-        tle = satellite_data.get('tle')
-        if not tle:
-            print(f"{Fore.RED}No hay datos TLE disponibles para calcular pases{Style.RESET_ALL}")
-            return
-        
+    def _display_passes(self, satellite_data: Dict, observer_lat: float, 
+                       observer_lon: float, hours: int):
+        """Muestra pases futuros."""
         try:
+            tle = satellite_data.get('tle')
             name, line1, line2 = parse_tle(tle)
-            orbital_calc = OrbitalCalculator(line1, line2)
+            calc = OrbitalCalculator(line1, line2)
             
-            self.print_header(f"PASES FUTUROS ({hours}h desde ubicación {observer_lat:.2f}, {observer_lon:.2f})")
-            print(f"Elevación mínima: {min_elevation}°\n")
+            self._print_header(f"PASES FUTUROS ({hours}h)")
+            print(f"Ubicación: {observer_lat:.2f}°, {observer_lon:.2f}°\n")
             
-            passes = orbital_calc.calculate_passes(
-                observer_lat, observer_lon, 0.0, hours, min_elevation
-            )
+            passes = calc.calculate_passes(observer_lat, observer_lon, hours)
             
             if not passes:
-                print(f"{Fore.YELLOW}No se encontraron pases visibles en las próximas {hours} horas{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}No hay pases visibles{Style.RESET_ALL}")
                 return
             
             passes_data = []
             for i, pass_info in enumerate(passes, 1):
-                start_time = pass_info['start_time'].strftime('%Y-%m-%d %H:%M')
-                duration = pass_info['duration_minutes']
-                max_elevation = pass_info['max_elevation']
-                max_azimuth = pass_info['max_elevation_azimuth']
+                start_time = pass_info['start_time'].strftime('%m-%d %H:%M')
+                duration = f"{pass_info['duration_minutes']:.1f} min"
+                max_elev = f"{pass_info['max_elevation']:.1f}°"
                 
-                passes_data.append([
-                    i,
-                    start_time,
-                    f"{duration:.1f} min",
-                    f"{max_elevation:.1f}°",
-                    f"{max_azimuth:.1f}°"
-                ])
+                passes_data.append([i, start_time, duration, max_elev])
             
             print(tabulate(
                 passes_data,
-                headers=["#", "Inicio (UTC)", "Duración", "Elev. Máx", "Azimut Máx"],
+                headers=["#", "Inicio", "Duración", "Elev. Máx"],
                 tablefmt="grid"
             ))
             
         except Exception as e:
-            print(f"{Fore.RED}Error al calcular pases: {e}{Style.RESET_ALL}")
+            print(f"{Fore.RED}Error calculando pases: {e}{Style.RESET_ALL}")
     
-    def print_security_analysis(self, satellite_data: dict):
-        """Imprime análisis de seguridad SPARTA."""
-        # ... (código que se te proporcionó) ...
+    def _display_security_analysis(self, satellite_data: Dict):
+        """Muestra análisis de seguridad."""
         try:
-            analysis = self.sparta_analyzer.analyze_satellite(satellite_data)
-            report = self.sparta_analyzer.generate_sparta_report(analysis)
+            analysis = self.security_analyzer.analyze_satellite(satellite_data)
+            report = self.security_analyzer.generate_report(analysis)
             print(f"\n{Fore.RED}{report}{Style.RESET_ALL}")
-            
         except Exception as e:
-            print(f"{Fore.RED}Error en análisis de seguridad: {e}{Style.RESET_ALL}")
+            print(f"{Fore.RED}Error en análisis SPARTA: {e}{Style.RESET_ALL}")
     
-    def print_search_results(self, search_results: list, search_term: str):
-        """Imprime resultados de búsqueda."""
-        # ... (código que se te proporcionó) ...
-        self.print_header(f"RESULTADOS DE BÚSQUEDA: '{search_term}'")
-        
-        if not search_results:
-            print(f"{Fore.YELLOW}No se encontraron satélites con el término '{search_term}'{Style.RESET_ALL}")
-            return
-        
-        results_data = []
-        for sat in search_results[:20]:  # Limitar a 20 resultados
-            results_data.append([
-                sat.get('NORAD_CAT_ID', 'N/A'),
-                sat.get('OBJECT_NAME', 'N/A')[:40],  # Truncar nombres largos
-                sat.get('COUNTRY', 'N/A'),
-                sat.get('LAUNCH_DATE', 'N/A')
-            ])
-        
-        print(tabulate(
-            results_data,
-            headers=["NORAD ID", "Nombre", "País", "Lanzamiento"],
-            tablefmt="grid"
-        ))
-        
-        if len(search_results) > 20:
-            print(f"\n{Fore.YELLOW}Mostrando 20 de {len(search_results)} resultados{Style.RESET_ALL}")
+    def _print_header(self, title: str):
+        """Imprime encabezado."""
+        print(f"\n{Fore.CYAN}{Style.BRIGHT}{'=' * 60}")
+        print(f"{title:^60}")
+        print(f"{'=' * 60}{Style.RESET_ALL}\n")
     
-    def run(self, args):
-        """Ejecuta la aplicación principal."""
-        # ... (código que se te proporcionó) ...
+    def _print_table(self, data: List, format_type: str):
+        """Imprime tabla de datos."""
+        if format_type == 'table':
+            print(tabulate(data, headers=["Campo", "Valor"], tablefmt="grid"))
+        else:
+            for field, value in data:
+                if value and str(value) != 'N/A':
+                    print(f"{Fore.YELLOW}{field:.<25}{Style.RESET_ALL} {value}")
+        print()
+    
+    def _parse_location(self, location_str: str) -> Tuple[float, float]:  # ← TIPO CORREGIDO
+        """Parse ubicación en formato 'lat,lon'."""
         try:
-            # Configurar logging
-            if args.verbose:
-                logging.basicConfig(level=logging.INFO)
-            
-            # Parsear ubicación
-            observer_lat, observer_lon = self.parse_location(args.location)
-            
-            # Caso especial: búsqueda
-            if args.search:
-                search_results = self.data_retriever.search_satellite_by_name(args.search)
-                self.print_search_results(search_results, args.search)
-                return
-            
-            # Recuperar datos del satélite
-            print(f"{Fore.CYAN}Recuperando datos satelitales...{Style.RESET_ALL}")
-            
-            satellite_data = self.data_retriever.get_comprehensive_satellite_data(
-                satellite_id=args.id,
-                satellite_name=args.name
-            )
-            
-            if not satellite_data['tle'] and not satellite_data['spacetrack_info']:
-                print(f"{Fore.RED}No se pudieron recuperar datos para el satélite especificado{Style.RESET_ALL}")
-                return
-            
-            # Mostrar información básica
-            self.print_satellite_basic_info(satellite_data, args.output)
-            
-            # Mostrar posición actual
-            if satellite_data['tle']:
-                self.print_current_position(satellite_data)
-            
-            # Calcular y mostrar pases si se solicita
-            if args.passes and satellite_data['tle']:
-                self.print_passes(
-                    satellite_data, observer_lat, observer_lon, 
-                    args.hours, args.min_elevation
-                )
-            
-            # Análisis de seguridad SPARTA
-            if not args.no_security:
-                self.print_security_analysis(satellite_data)
-            
-        except KeyboardInterrupt:
-            print(f"\n{Fore.YELLOW}Operación cancelada por el usuario{Style.RESET_ALL}")
-        except Exception as e:
-            print(f"{Fore.RED}Error: {e}{Style.RESET_ALL}")
-            if args.verbose:
-                import traceback
-                traceback.print_exc()
+            lat, lon = map(float, location_str.split(','))
+            return lat, lon
+        except:
+            raise ValueError(f"Formato de ubicación inválido: {location_str}")
