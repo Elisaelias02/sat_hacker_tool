@@ -104,15 +104,36 @@ class SatelliteDataRetriever:
             }
             
             logger.info("Autenticando con Space-Track.org...")
-            response = self.session.post(login_url, data=login_data, timeout=10)
-            response.raise_for_status()
+            logger.info(f"URL de login: {login_url}")
             
-            self._spacetrack_authenticated = True
-            logger.info("Autenticación exitosa con Space-Track.org")
-            return True
+            response = self.session.post(login_url, data=login_data, timeout=10)
+            
+            logger.info(f"Respuesta de autenticación: {response.status_code}")
+            logger.info(f"Cookies recibidas: {len(response.cookies)}")
+            
+            # Space-Track devuelve diferentes códigos según el resultado
+            if response.status_code == 200:
+                # Verificar si realmente estamos autenticados haciendo una consulta de prueba
+                test_url = f"{SPACETRACK_BASE_URL}/basicspacedata/query/class/satcat/NORAD_CAT_ID/25544/format/json/limit/1"
+                test_response = self.session.get(test_url, timeout=10)
+                
+                if test_response.status_code == 200:
+                    self._spacetrack_authenticated = True
+                    logger.info("Autenticación exitosa con Space-Track.org")
+                    return True
+                else:
+                    logger.error(f"Autenticación falló - test query status: {test_response.status_code}")
+                    return False
+            else:
+                logger.error(f"Autenticación falló - status code: {response.status_code}")
+                logger.error(f"Respuesta: {response.text[:200]}")
+                return False
             
         except requests.RequestException as e:
-            logger.error(f"Error de autenticación con Space-Track: {e}")
+            logger.error(f"Error de conexión durante autenticación: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Error inesperado durante autenticación: {e}")
             return False
     
     def get_satellite_info_spacetrack(self, satellite_id: int) -> Optional[Dict]:
@@ -245,30 +266,130 @@ class SatelliteDataRetriever:
             'spacetrack_info': None,
             'additional_info': None,
             'search_results': [],
-            'errors': []
+            'errors': [],
+            'celestrak_data': None
         }
         
-        # Si solo tenemos nombre, buscar primero el ID
-        if satellite_name and not satellite_id:
-            search_results = self.search_satellite_by_name(satellite_name)
-            result['search_results'] = search_results
-            
-            if search_results:
-                satellite_id = int(search_results[0].get('NORAD_CAT_ID', 0))
-                logger.info(f"Encontrado ID {satellite_id} para nombre '{satellite_name}'")
-        
-        # Recuperar TLE desde Celestrak
+        # Recuperar TLE desde Celestrak (esto siempre funciona)
+        logger.info("Recuperando datos desde Celestrak...")
         if satellite_id:
             result['tle'] = self.get_tle_from_celestrak(satellite_id=satellite_id)
         elif satellite_name:
             result['tle'] = self.get_tle_from_celestrak(satellite_name=satellite_name)
         
-        # Recuperar información desde Space-Track
+        # Si tenemos TLE, extraer información básica
+        if result['tle']:
+            try:
+                lines = result['tle'].strip().split('\n')
+                if len(lines) >= 3:
+                    sat_name = lines[0].strip()
+                    line1 = lines[1].strip()
+                    line2 = lines[2].strip()
+                    
+                    # Extraer información del TLE
+                    result['celestrak_data'] = {
+                        'satellite_name': sat_name,
+                        'norad_id': satellite_id or self._extract_norad_from_tle(line1),
+                        'classification': line1[7:8],
+                        'international_designator': line1[9:17].strip(),
+                        'epoch_year': int(line1[18:20]),
+                        'epoch_day': float(line1[20:32]),
+                        'inclination': float(line2[8:16]),
+                        'raan': float(line2[17:25]),
+                        'eccentricity': float('0.' + line2[26:33]),
+                        'arg_perigee': float(line2[34:42]),
+                        'mean_anomaly': float(line2[43:51]),
+                        'mean_motion': float(line2[52:63]),
+                        'revolution_number': int(line2[63:68])
+                    }
+                    
+                    # Inferir información adicional del nombre
+                    result['celestrak_data'].update(self._infer_satellite_info(sat_name))
+                    
+            except Exception as e:
+                logger.error(f"Error procesando TLE: {e}")
+        
+        # Intentar Space-Track solo si las credenciales están disponibles
+        if self.spacetrack_username and self.spacetrack_password:
+            logger.info("Intentando recuperar datos desde Space-Track...")
+            try:
+                # Si solo tenemos nombre, buscar primero el ID
+                if satellite_name and not satellite_id:
+                    search_results = self.search_satellite_by_name(satellite_name)
+                    result['search_results'] = search_results
+                    
+                    if search_results:
+                        satellite_id = int(search_results[0].get('NORAD_CAT_ID', 0))
+                        logger.info(f"Encontrado ID {satellite_id} para nombre '{satellite_name}'")
+                
+                # Recuperar información desde Space-Track
+                if satellite_id:
+                    result['spacetrack_info'] = self.get_satellite_info_spacetrack(satellite_id)
+                    
+            except Exception as e:
+                logger.warning(f"Error al acceder Space-Track (continuando con Celestrak): {e}")
+                result['errors'].append(f"Space-Track error: {e}")
+        else:
+            logger.info("Credenciales de Space-Track no disponibles, usando solo Celestrak")
+        
+        # Información adicional de fuentes públicas
         if satellite_id:
-            result['spacetrack_info'] = self.get_satellite_info_spacetrack(satellite_id)
-            result['additional_info'] = self.get_satellite_launches_info(satellite_id)
+            try:
+                result['additional_info'] = self.get_satellite_launches_info(satellite_id)
+            except Exception as e:
+                logger.warning(f"Error obteniendo información adicional: {e}")
         
         return result
+    
+    def _extract_norad_from_tle(self, tle_line1: str) -> int:
+        """Extrae el NORAD ID de la primera línea del TLE."""
+        try:
+            return int(tle_line1[2:7])
+        except:
+            return 0
+    
+    def _infer_satellite_info(self, satellite_name: str) -> Dict:
+        """Infiere información del satélite basado en su nombre."""
+        name_upper = satellite_name.upper()
+        info = {
+            'inferred_country': 'UNKNOWN',
+            'inferred_type': 'UNKNOWN',
+            'inferred_purpose': 'UNKNOWN'
+        }
+        
+        # Inferir país basado en patrones de nombres
+        if any(pattern in name_upper for pattern in ['ISS', 'DRAGON', 'CYGNUS']):
+            info['inferred_country'] = 'INTERNATIONAL'
+        elif any(pattern in name_upper for pattern in ['STARLINK', 'GPS', 'NOAA', 'GOES']):
+            info['inferred_country'] = 'US'
+        elif any(pattern in name_upper for pattern in ['COSMOS', 'GLONASS']):
+            info['inferred_country'] = 'RU'
+        elif 'BEIDOU' in name_upper:
+            info['inferred_country'] = 'CN'
+        elif 'GALILEO' in name_upper:
+            info['inferred_country'] = 'EU'
+        
+        # Inferir tipo/propósito
+        if any(pattern in name_upper for pattern in ['STARLINK', 'ONEWEB', 'IRIDIUM']):
+            info['inferred_type'] = 'COMMUNICATION'
+            info['inferred_purpose'] = 'Internet/Communications constellation'
+        elif any(pattern in name_upper for pattern in ['GPS', 'GLONASS', 'GALILEO', 'BEIDOU']):
+            info['inferred_type'] = 'NAVIGATION'
+            info['inferred_purpose'] = 'Global Navigation Satellite System'
+        elif any(pattern in name_upper for pattern in ['NOAA', 'GOES', 'METOP']):
+            info['inferred_type'] = 'WEATHER'
+            info['inferred_purpose'] = 'Weather monitoring and forecasting'
+        elif any(pattern in name_upper for pattern in ['LANDSAT', 'SENTINEL', 'WORLDVIEW']):
+            info['inferred_type'] = 'EARTH_OBSERVATION'
+            info['inferred_purpose'] = 'Earth observation and remote sensing'
+        elif 'ISS' in name_upper:
+            info['inferred_type'] = 'SPACE_STATION'
+            info['inferred_purpose'] = 'International Space Station'
+        elif 'COSMOS' in name_upper:
+            info['inferred_type'] = 'MILITARY'
+            info['inferred_purpose'] = 'Military/Intelligence satellite'
+        
+        return info
 
 
 def parse_tle(tle_string: str) -> Tuple[str, str, str]:
