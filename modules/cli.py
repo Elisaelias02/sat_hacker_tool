@@ -8,7 +8,7 @@ from colorama import init, Fore, Style
 
 from modules.data_sources import SatelliteDataManager
 from modules.orbital import OrbitalCalculator
-from modules.security import SecurityAnalyzer
+from modules.security import SatelliteRiskAnalyzer
 from modules.utils import parse_tle
 from config.settings import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 
