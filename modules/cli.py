@@ -171,11 +171,14 @@ Ejemplos:
                 print(f"\n{Fore.CYAN} Para más detalles del primer resultado:{Style.RESET_ALL}")
                 print(f"    python satintel.py --id {norad_id}")
     
-    def _display_satellite_info(self, satellite_data: Dict, output_format: str):
-        """Muestra información del satélite - MÉTODO CORREGIDO."""
-        if output_format == 'json':
-            import json
-            print(json.dumps(satellite_data, indent=2, default=str))
+    def _display_security_analysis(self, satellite_data: Dict):
+    """Muestra evaluación de riesgos."""
+    try:
+        analysis = self.risk_analyzer.analyze_satellite(satellite_data)
+        report = self.risk_analyzer.generate_assessment_report(analysis)
+        print(f"\n{Fore.RED}{report}{Style.RESET_ALL}")
+    except Exception as e:
+        print(f"{Fore.RED}Error en evaluación de riesgos: {e}{Style.RESET_ALL}")
             return
         
         basic_info = satellite_data.get('basic_info', {})
