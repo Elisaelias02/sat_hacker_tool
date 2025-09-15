@@ -20,12 +20,21 @@ Sat Hacker Tool es una herramienta  de **línea de comandos** desarrollada en **
       * Elementos orbitales completos (inclinación, excentricidad, etc.)
       * Conversión automática de coordenadas ECI a geodésicas
 
-  * **🔒 Inteligencia de Seguridad SPARTA:**
+   ## 🔒 Sistema de Evaluación de Riesgos
 
-      * Evaluación automatizada de riesgos por país de origen
-      * Categorización por tipo de misión y capacidades
-      * Identificación de tácticas y técnicas potenciales
-      * Generación de recomendaciones de seguridad
+   SatIntel incluye un módulo de evaluación automatizada de riesgos 
+   que usa conceptos del framework SPARTA adaptados al dominio espacial:
+
+   ### Características:
+   - Evaluación heurística por país de origen
+   - Categorización por tipo de misión
+   - Scoring automático de riesgos potenciales
+   - Recomendaciones generales de seguridad
+
+   ### Limitaciones:
+   Este sistema proporciona una evaluación inicial automatizada.
+   Para análisis críticos de seguridad nacional, se recomienda
+   validación por analistas especializados en inteligencia espacial.
 
   * **💻 Interfaz CLI:**
 
