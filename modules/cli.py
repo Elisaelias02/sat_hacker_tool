@@ -13,21 +13,22 @@ from modules.utils import parse_tle
 from config.settings import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 
 init(autoreset=True)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class SatIntelCLI:
-    """Interfaz CLI principal - versión corregida."""
+    """Main CLI Interface - corrected version."""
     
     def __init__(self):
         self.data_manager = SatelliteDataManager()
         self.risk_analyzer = SatelliteRiskAnalyzer()
     
     def create_parser(self) -> argparse.ArgumentParser:
-        """Crea parser de argumentos."""
+        """Creates the argument parser."""
         parser = argparse.ArgumentParser(
-            description="SatIntel - Herramienta de Inteligencia Satelital",
+            description="SatIntel - Satellite Intelligence Tool",
             epilog="""
-Ejemplos:
+Examples:
   python satintel.py --id 25544
   python satintel.py --name "ISS"
   python satintel.py --id 25544 --passes --location "20.67,-103.35"
@@ -35,44 +36,44 @@ Ejemplos:
             """
         )
         
-        # Identificación del satélite
+        # Satellite identification
         id_group = parser.add_mutually_exclusive_group(required=True)
-        id_group.add_argument('--id', type=int, help='NORAD ID del satélite')
-        id_group.add_argument('--name', type=str, help='Nombre del satélite')
-        id_group.add_argument('--search', type=str, help='Buscar satélites por nombre')
+        id_group.add_argument('--id', type=int, help='NORAD ID of the satellite')
+        id_group.add_argument('--name', type=str, help='Name of the satellite')
+        id_group.add_argument('--search', type=str, help='Search satellites by name')
         
-        # Opciones de análisis
+        # Analysis options
         parser.add_argument('--location', type=str, 
                             default=f"{DEFAULT_LATITUDE},{DEFAULT_LONGITUDE}",
-                            help='Ubicación observador "lat,lon"')
+                            help='Observer location "lat,lon"')
         parser.add_argument('--passes', action='store_true', 
-                            help='Calcular pases futuros')
+                            help='Calculate future passes')
         parser.add_argument('--hours', type=int, default=24,
-                            help='Horas para calcular pases')
+                            help='Hours to calculate passes for')
         
-        # Opciones de salida
+        # Output options
         parser.add_argument('--output', choices=['table', 'json', 'detailed'],
-                            default='detailed', help='Formato de salida')
+                            default='detailed', help='Output format')
         parser.add_argument('--no-security', action='store_true',
-                            help='Omitir análisis SPARTA')
+                            help='Omit SPARTA analysis')
         parser.add_argument('--verbose', '-v', action='store_true',
-                            help='Salida detallada')
+                            help='Detailed output')
         
         return parser
     
     def run(self, args):
-        """Ejecuta la aplicación principal."""
+        """Runs the main application."""
         try:
             if args.verbose:
                 logging.basicConfig(level=logging.INFO)
             
-            # Caso búsqueda
+            # Search case
             if args.search:
                 self._handle_search(args.search)
                 return
             
-            # Obtener datos del satélite
-            print(f"{Fore.CYAN} Recuperando datos satelitales...{Style.RESET_ALL}")
+            # Get satellite data
+            print(f"{Fore.CYAN} Retrieving satellite data...{Style.RESET_ALL}")
             
             satellite_data = self.data_manager.get_satellite_data(
                 satellite_id=args.id,
@@ -80,31 +81,31 @@ Ejemplos:
             )
             
             if not satellite_data.get('sources_used'):
-                print(f"{Fore.RED} No se encontraron datos para el satélite{Style.RESET_ALL}")
+                print(f"{Fore.RED} No data found for the satellite{Style.RESET_ALL}")
                 return
             
-            # Mostrar información
+            # Display information
             self._display_satellite_info(satellite_data, args.output)
             
-            # Mostrar posición actual
+            # Display current position
             if satellite_data.get('tle'):
                 self._display_current_position(satellite_data)
             
-            # Calcular pases si se solicita
+            # Calculate passes if requested
             if args.passes and satellite_data.get('tle'):
                 observer_lat, observer_lon = self._parse_location(args.location)
                 self._display_passes(satellite_data, observer_lat, observer_lon, args.hours)
             
-            # Análisis de seguridad
+            # Security analysis
             if not args.no_security:
                 self._display_security_analysis(satellite_data)
             
-            # Resumen final
+            # Final summary
             sources_count = len(satellite_data.get('sources_used', []))
-            print(f"\n{Fore.GREEN} Consulta completada usando {sources_count} fuentes{Style.RESET_ALL}")
+            print(f"\n{Fore.GREEN} Query completed using {sources_count} sources{Style.RESET_ALL}")
             
         except KeyboardInterrupt:
-            print(f"\n{Fore.YELLOW}Operación cancelada{Style.RESET_ALL}")
+            print(f"\n{Fore.YELLOW}Operation canceled{Style.RESET_ALL}")
         except Exception as e:
             print(f"{Fore.RED} Error: {e}{Style.RESET_ALL}")
             if args.verbose:
@@ -112,20 +113,20 @@ Ejemplos:
                 traceback.print_exc()
     
     def _handle_search(self, search_term: str):
-        """Maneja búsqueda de satélites - VERSIÓN MEJORADA."""
-        print(f"{Fore.CYAN} Buscando satélites: '{search_term}'...{Style.RESET_ALL}")
+        """Handles satellite search - IMPROVED VERSION."""
+        print(f"{Fore.CYAN} Searching for satellites: '{search_term}'...{Style.RESET_ALL}")
         
         results = self.data_manager.search_satellites(search_term)
         
         if not results:
-            print(f"{Fore.YELLOW} No se encontraron satélites con el término '{search_term}'{Style.RESET_ALL}")
-            print(f"{Fore.CYAN} Sugerencias:{Style.RESET_ALL}")
-            print(f"  • Intenta términos más cortos: 'star' en lugar de 'starlink'")
-            print(f"  • Usa nombres comunes: 'ISS', 'NOAA', 'GPS'")
-            print(f"  • Busca por operador: 'SpaceX', 'NASA', 'USAF'")
+            print(f"{Fore.YELLOW} No satellites found with the term '{search_term}'{Style.RESET_ALL}")
+            print(f"{Fore.CYAN} Suggestions:{Style.RESET_ALL}")
+            print(f"  • Try shorter terms: 'star' instead of 'starlink'")
+            print(f"  • Use common names: 'ISS', 'NOAA', 'GPS'")
+            print(f"  • Search by operator: 'SpaceX', 'NASA', 'USAF'")
             return
         
-        # Agrupar resultados por fuente
+        # Group results by source
         results_by_source = {}
         for result in results:
             source = result.get('source', 'Unknown')
@@ -133,96 +134,88 @@ Ejemplos:
                 results_by_source[source] = []
             results_by_source[source].append(result)
         
-        print(f"\n{Fore.GREEN} Encontrados {len(results)} satélites en {len(results_by_source)} fuentes:{Style.RESET_ALL}\n")
+        print(f"\n{Fore.GREEN} Found {len(results)} satellites from {len(results_by_source)} sources:{Style.RESET_ALL}\n")
         
-        # Mostrar resultados por fuente
+        # Display results by source
         for source, source_results in results_by_source.items():
-            print(f"{Fore.CYAN} Resultados desde {source} ({len(source_results)}):{Style.RESET_ALL}")
+            print(f"{Fore.CYAN} Results from {source} ({len(source_results)}):{Style.RESET_ALL}")
             
             table_data = []
-            for i, sat in enumerate(source_results[:10], 1):  # Máximo 10 por fuente
+            for i, sat in enumerate(source_results[:10], 1):  # Max 10 per source
                 table_data.append([
                     i,
                     sat.get('norad_id', 'N/A'),
-                    sat.get('name', 'N/A')[:45],  # Truncar nombres largos
+                    sat.get('name', 'N/A')[:45],  # Truncate long names
                     sat.get('operator', 'N/A')[:20],
                     sat.get('status', 'N/A')[:15]
                 ])
             
             print(tabulate(
                 table_data,
-                headers=["#", "NORAD ID", "Nombre", "Operador", "Estado"],
+                headers=["#", "NORAD ID", "Name", "Operator", "Status"],
                 tablefmt="grid"
             ))
             
             if len(source_results) > 10:
-                print(f"{Fore.YELLOW}... y {len(source_results) - 10} resultados más de {source}{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}... and {len(source_results) - 10} more results from {source}{Style.RESET_ALL}")
             
-            print()  # Línea en blanco entre fuentes
+            print()  # Blank line between sources
         
-        # Mostrar estadísticas finales
-        print(f"{Fore.GREEN} Búsqueda completada. Total único: {len(results)} satélites{Style.RESET_ALL}")
+        # Display final statistics
+        print(f"{Fore.GREEN} Search completed. Total unique: {len(results)} satellites{Style.RESET_ALL}")
         
-        # Sugerir comandos de seguimiento
+        # Suggest follow-up commands
         if results:
             first_result = results[0]
             norad_id = first_result.get('norad_id')
             if norad_id:
-                print(f"\n{Fore.CYAN} Para más detalles del primer resultado:{Style.RESET_ALL}")
+                print(f"\n{Fore.CYAN} For more details on the first result:{Style.RESET_ALL}")
                 print(f"    python satintel.py --id {norad_id}")
     
-    def _display_security_analysis(self, satellite_data: Dict):
-    """Muestra evaluación de riesgos."""
-    try:
-        analysis = self.risk_analyzer.analyze_satellite(satellite_data)
-        report = self.risk_analyzer.generate_assessment_report(analysis)
-        print(f"\n{Fore.RED}{report}{Style.RESET_ALL}")
-    except Exception as e:
-        print(f"{Fore.RED}Error en evaluación de riesgos: {e}{Style.RESET_ALL}")
-            return
-        
+    def _display_satellite_info(self, satellite_data: Dict, output_format: str):
+        """Displays satellite information."""
         basic_info = satellite_data.get('basic_info', {})
         mission_info = satellite_data.get('mission_info', {})
         technical_info = satellite_data.get('technical_info', {})
         orbital_info = satellite_data.get('orbital_info', {})
         sources = ', '.join(satellite_data.get('sources_used', []))
         
-        # Información básica
-        self._print_header("INFORMACIÓN BÁSICA DEL SATÉLITE")
-        print(f"{Fore.CYAN}Fuentes: {sources}{Style.RESET_ALL}\n")
+        # Basic information
+        self._print_header("SATELLITE BASIC INFORMATION")
+        print(f"{Fore.CYAN}Sources: {sources}{Style.RESET_ALL}\n")
         
         basic_data = [
             ["NORAD ID", basic_info.get('norad_id', 'N/A')],
-            ["Nombre", basic_info.get('name', 'N/A')],
-            ["Operador", basic_info.get('operator', 'N/A')],
-            ["País", basic_info.get('countries', basic_info.get('inferred_country', 'N/A'))],
-            ["Estado", basic_info.get('status', 'N/A')],
-            ["Lanzamiento", basic_info.get('launched', basic_info.get('launch_date', 'N/A'))],
-            ["Sitio Web", basic_info.get('website', 'N/A')]
+            ["Name", basic_info.get('name', 'N/A')],
+            ["Operator", basic_info.get('operator', 'N/A')],
+            ["Country", basic_info.get('countries', basic_info.get('inferred_country', 'N/A'))],
+            ["Status", basic_info.get('status', 'N/A')],
+            ["Launch", basic_info.get('launched', basic_info.get('launch_date', 'N/A'))],
+            ["Website", basic_info.get('website', 'N/A')]
         ]
         
         self._print_table(basic_data, output_format)
         
-        # Información de misión
+        # Mission information
         if mission_info:
-            self._print_header("INFORMACIÓN DE MISIÓN")
+            self._print_header("MISSION INFORMATION")
             
             mission_data = []
             if mission_info.get('description'):
-                mission_data.append(["Descripción", mission_info['description'][:100] + "..."])
+                mission_data.append(["Description", mission_info['description'][:100] + "..."])
             if mission_info.get('type'):
-                mission_data.append(["Tipo", mission_info['type']])
+                mission_data.append(["Type", mission_info['type']])
             if mission_info.get('orbit'):
-                mission_data.append(["Órbita", mission_info['orbit']])
+                mission_data.append(["Orbit", mission_info['orbit']])
             if mission_info.get('inferred_purpose'):
-                mission_data.append(["Propósito", mission_info['inferred_purpose']])
+                mission_data.append(["Purpose", mission_info['inferred_purpose']])
             
             if mission_data:
                 self._print_table(mission_data, output_format)
         
-        # Información técnica
+        # Technical information
         if technical_info:
-            self._print_header("ESPECIFICACIONES TÉCNICAS")
+            self._print_header("TECHNICAL SPECIFICATIONS")
             
             tech_data = []
             for key, value in technical_info.items():
@@ -235,22 +228,22 @@ Ejemplos:
             if tech_data:
                 self._print_table(tech_data, output_format)
         
-        # Elementos orbitales
+        # Orbital elements
         if orbital_info:
-            self._print_header("ELEMENTOS ORBITALES")
+            self._print_header("ORBITAL ELEMENTS")
             
             orbital_data = [
-                ["Inclinación", f"{orbital_info.get('inclination', 0):.2f}°"],
-                ["Excentricidad", f"{orbital_info.get('eccentricity', 0):.6f}"],
-                ["Movimiento Medio", f"{orbital_info.get('mean_motion', 0):.6f} rev/día"],
+                ["Inclination", f"{orbital_info.get('inclination', 0):.2f}°"],
+                ["Eccentricity", f"{orbital_info.get('eccentricity', 0):.6f}"],
+                ["Mean Motion", f"{orbital_info.get('mean_motion', 0):.6f} rev/day"],
                 ["RAAN", f"{orbital_info.get('raan', 0):.2f}°"],
-                ["Arg. Perigeo", f"{orbital_info.get('arg_perigee', 0):.2f}°"]
+                ["Arg. Perigee", f"{orbital_info.get('arg_perigee', 0):.2f}°"]
             ]
             
             self._print_table(orbital_data, output_format)
     
     def _display_current_position(self, satellite_data: Dict):
-        """Muestra posición actual del satélite."""
+        """Displays the current position of the satellite."""
         try:
             tle = satellite_data.get('tle')
             if not tle:
@@ -261,37 +254,37 @@ Ejemplos:
             position = calc.get_current_position()
             
             if position:
-                self._print_header("POSICIÓN ACTUAL")
+                self._print_header("CURRENT POSITION")
                 current_time = datetime.utcnow()
                 
                 position_data = [
-                    ["Tiempo UTC", current_time.strftime('%Y-%m-%d %H:%M:%S')],
-                    ["Latitud", f"{position['latitude']:.4f}°"],
-                    ["Longitud", f"{position['longitude']:.4f}°"],
-                    ["Altitud", f"{position['altitude_km']:.2f} km"],
-                    ["Velocidad", f"{position['velocity_km_s']:.2f} km/s"]
+                    ["UTC Time", current_time.strftime('%Y-%m-%d %H:%M:%S')],
+                    ["Latitude", f"{position['latitude']:.4f}°"],
+                    ["Longitude", f"{position['longitude']:.4f}°"],
+                    ["Altitude", f"{position['altitude_km']:.2f} km"],
+                    ["Velocity", f"{position['velocity_km_s']:.2f} km/s"]
                 ]
                 
                 self._print_table(position_data, 'detailed')
                 
         except Exception as e:
-            print(f"{Fore.RED}Error calculando posición: {e}{Style.RESET_ALL}")
+            print(f"{Fore.RED}Error calculating position: {e}{Style.RESET_ALL}")
     
     def _display_passes(self, satellite_data: Dict, observer_lat: float, 
                         observer_lon: float, hours: int):
-        """Muestra pases futuros."""
+        """Displays future passes."""
         try:
             tle = satellite_data.get('tle')
             name, line1, line2 = parse_tle(tle)
             calc = OrbitalCalculator(line1, line2)
             
-            self._print_header(f"PASES FUTUROS ({hours}h)")
-            print(f"Ubicación: {observer_lat:.2f}°, {observer_lon:.2f}°\n")
+            self._print_header(f"FUTURE PASSES ({hours}h)")
+            print(f"Location: {observer_lat:.2f}°, {observer_lon:.2f}°\n")
             
             passes = calc.calculate_passes(observer_lat, observer_lon, hours)
             
             if not passes:
-                print(f"{Fore.YELLOW}No hay pases visibles{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}No visible passes{Style.RESET_ALL}")
                 return
             
             passes_data = []
@@ -304,32 +297,32 @@ Ejemplos:
             
             print(tabulate(
                 passes_data,
-                headers=["#", "Inicio", "Duración", "Elev. Máx"],
+                headers=["#", "Start", "Duration", "Max. Elev."],
                 tablefmt="grid"
             ))
             
         except Exception as e:
-            print(f"{Fore.RED}Error calculando pases: {e}{Style.RESET_ALL}")
+            print(f"{Fore.RED}Error calculating passes: {e}{Style.RESET_ALL}")
     
     def _display_security_analysis(self, satellite_data: Dict):
-        """Muestra análisis de seguridad."""
+        """Displays security analysis."""
         try:
-            analysis = self.security_analyzer.analyze_satellite(satellite_data)
-            report = self.security_analyzer.generate_report(analysis)
+            analysis = self.risk_analyzer.analyze_satellite(satellite_data)
+            report = self.risk_analyzer.generate_assessment_report(analysis)
             print(f"\n{Fore.RED}{report}{Style.RESET_ALL}")
         except Exception as e:
-            print(f"{Fore.RED}Error en análisis SPARTA: {e}{Style.RESET_ALL}")
+            print(f"{Fore.RED}Error in SPARTA analysis: {e}{Style.RESET_ALL}")
     
     def _print_header(self, title: str):
-        """Imprime encabezado."""
+        """Prints a header."""
         print(f"\n{Fore.CYAN}{Style.BRIGHT}{'=' * 60}")
         print(f"{title:^60}")
         print(f"{'=' * 60}{Style.RESET_ALL}\n")
     
     def _print_table(self, data: List, format_type: str):
-        """Imprime tabla de datos."""
+        """Prints a data table."""
         if format_type == 'table':
-            print(tabulate(data, headers=["Campo", "Valor"], tablefmt="grid"))
+            print(tabulate(data, headers=["Field", "Value"], tablefmt="grid"))
         else:
             for field, value in data:
                 if value and str(value) != 'N/A':
@@ -337,9 +330,9 @@ Ejemplos:
         print()
     
     def _parse_location(self, location_str: str) -> Tuple[float, float]:
-        """Parse ubicación en formato 'lat,lon'."""
+        """Parses location in 'lat,lon' format."""
         try:
             lat, lon = map(float, location_str.split(','))
             return lat, lon
         except:
-            raise ValueError(f"Formato de ubicación inválido: {location_str}")
+            raise ValueError(f"Invalid location format: {location_str}")
