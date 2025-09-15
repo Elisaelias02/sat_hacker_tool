@@ -1,8 +1,3 @@
-"""
-Módulo de evaluación de riesgos satelitales - VERSIÓN CORREGIDA
-Inspirado en conceptos del framework SPARTA pero implementando análisis heurístico automatizado.
-"""
-
 import logging
 from typing import Dict, List
 from datetime import datetime
