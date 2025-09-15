@@ -20,7 +20,7 @@ class SatIntelCLI:
     
     def __init__(self):
         self.data_manager = SatelliteDataManager()
-        self.security_analyzer = SecurityAnalyzer()
+        self.risk_analyzer = SatelliteRiskAnalyzer()
     
     def create_parser(self) -> argparse.ArgumentParser:
         """Crea parser de argumentos."""
