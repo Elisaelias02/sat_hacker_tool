@@ -8,7 +8,7 @@ from config.settings import EARTH_RADIUS_KM, MIN_ELEVATION_DEGREES
 logger = logging.getLogger(__name__)
 
 class OrbitalCalculator:
-    """Calculador de mecánica orbital simplificado y limpio."""
+    """Calculador de mecánica orbital"""
     
     def __init__(self, tle_line1: str, tle_line2: str):
         """Inicializa con datos TLE."""
