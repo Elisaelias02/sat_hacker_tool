@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class SatIntelCLI:
-    """Main CLI Interface - corrected version."""
+    """Main CLI Interface"""
     
     def __init__(self):
         self.data_manager = SatelliteDataManager()
